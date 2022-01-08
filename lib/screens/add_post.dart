@@ -1,8 +1,14 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'package:blog_app/widgets/round_button.dart';
+
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 
 class AddPost extends StatefulWidget {
   const AddPost({Key? key}) : super(key: key);
@@ -13,11 +19,15 @@ class AddPost extends StatefulWidget {
 
 class _AddPostState extends State<AddPost> {
   File? _image;
+  bool showSpinner = false;
   final _picker = ImagePicker();
   final _formkey = GlobalKey<FormState>();
   TextEditingController titleController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   String title = "", description = "";
+  FirebaseAuth _auth = FirebaseAuth.instance;
+  final postRef = FirebaseDatabase.instance.ref().child('Posts');
+  FirebaseStorage storage = FirebaseStorage.instance;
 
   void dialog(context) {
     showDialog(
@@ -69,55 +79,69 @@ class _AddPostState extends State<AddPost> {
     });
   }
 
+  void toastMessage(String message) {
+    Fluttertoast.showToast(
+      msg: message.toString(),
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.CENTER,
+      timeInSecForIosWeb: 1,
+      backgroundColor: Colors.blue,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          iconTheme: const IconThemeData(color: Colors.black),
-          backgroundColor: Colors.transparent,
-          elevation: 0.0,
-          title: Container(
-            padding: const EdgeInsets.all(16.0),
-            child: const Text('POST'),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(5),
+    return ModalProgressHUD(
+      inAsyncCall: showSpinner,
+      child: Scaffold(
+          appBar: AppBar(
+            iconTheme: const IconThemeData(color: Colors.black),
+            backgroundColor: Colors.transparent,
+            elevation: 0.0,
+            title: Container(
+              padding: const EdgeInsets.all(8.0),
+              child: const Text('POST'),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(5),
+              ),
             ),
+            centerTitle: true,
           ),
-          centerTitle: true,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          child: Column(children: [
-            InkWell(
-              onTap: () {
-                dialog(context);
-              },
-              child: Center(
-                  child: SizedBox(
-                      height: MediaQuery.of(context).size.height * .2,
-                      width: MediaQuery.of(context).size.width * 1,
-                      child: _image != null
-                          ? ClipRect(
-                              child: Image.file(
-                              _image!.absolute,
-                              height: 100,
-                              width: 100,
-                              fit: BoxFit.fill,
-                            ))
-                          : Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: Colors.grey.shade100),
-                              child: const Icon(Icons.camera_alt,
-                                  color: Colors.blue)))),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: Form(
-                  key: _formkey,
+          body: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+            child: Column(children: [
+              InkWell(
+                onTap: () {
+                  dialog(context);
+                },
+                child: Center(
+                    child: SizedBox(
+                        height: 50,
+                        width: 50,
+                        child: _image != null
+                            ? ClipRect(
+                                child: Image.file(
+                                _image!.absolute,
+                                height: 50,
+                                width: 80,
+                                fit: BoxFit.fill,
+                              ))
+                            : Container(
+                                width: 80,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: Colors.grey.shade200),
+                                child: const Icon(Icons.camera_alt,
+                                    color: Colors.blue)))),
+              ),
+              const SizedBox(height: 10),
+              Form(
+                key: _formkey,
+                child: Expanded(
                   child: Column(children: [
                     TextFormField(
                       onChanged: (val) {
@@ -134,7 +158,7 @@ class _AddPostState extends State<AddPost> {
                       },
                     ),
                     const SizedBox(
-                      height: 30,
+                      height: 5,
                     ),
                     TextFormField(
                       onChanged: (val) {
@@ -153,13 +177,62 @@ class _AddPostState extends State<AddPost> {
                       ),
                     ),
                     const Spacer(),
-                    RoundButton(title: 'UPLOAD', onPress: () {}),
-                    const SizedBox(
-                      height: 30,
-                    ),
-                  ])),
-            ),
-          ]),
-        ));
+                    RoundButton(
+                        title: 'UPLOAD',
+                        onPress: () async {
+                          print(
+                              '*************************************************');
+                          setState(() {
+                            showSpinner = true;
+                          });
+                          try {
+                            print(
+                                '********************** Trying  ***************************');
+                            int date = DateTime.now().microsecondsSinceEpoch;
+                            var ref =
+                                FirebaseStorage.instance.ref('/blogapp$date');
+                            UploadTask uploadTask =
+                                ref.putFile(_image!.absolute);
+                            await Future.value(uploadTask);
+                            var newUrl = await ref.getDownloadURL();
+                            print(
+                                '************************ $newUrl *************************');
+                            final User? user = _auth.currentUser;
+                            postRef
+                                .child('Post List')
+                                .child(date.toString())
+                                .set({
+                              'pId': date.toString(),
+                              'pImage': newUrl.toString(),
+                              'pTime': date.toString(),
+                              'pTitle': titleController.text.toString(),
+                              'pDescription':
+                                  descriptionController.text.toString(),
+                              'pEmail': user!.email.toString(),
+                              'uid': user.uid.toString(),
+                            }).then((value) {
+                              toastMessage('Post Published!');
+                              setState(() {
+                                showSpinner = false;
+                              });
+                            }).onError((e, stackTrace) {
+                              toastMessage(e.toString());
+                              setState(() {
+                                showSpinner = false;
+                              });
+                            });
+                          } catch (e) {
+                            setState(() {
+                              showSpinner = false;
+                            });
+                            toastMessage(e.toString());
+                          }
+                        }),
+                  ]),
+                ),
+              ),
+            ]),
+          )),
+    );
   }
 }
