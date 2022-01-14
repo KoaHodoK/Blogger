@@ -34,6 +34,7 @@ class _SignInState extends State<SignIn> {
           });
           print('success');
           toastMessage('Successfully Created!');
+          Navigator.of(context).pop();
         }
       } catch (e) {
         print(e.toString());

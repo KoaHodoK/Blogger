@@ -25,8 +25,8 @@ class _AddPostState extends State<AddPost> {
   TextEditingController titleController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   String title = "", description = "";
-  FirebaseAuth _auth = FirebaseAuth.instance;
-  final postRef = FirebaseDatabase.instance.ref().child('Posts');
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final postRef = FirebaseDatabase.instance.reference().child('Posts');
   FirebaseStorage storage = FirebaseStorage.instance;
 
   void dialog(context) {
@@ -102,7 +102,11 @@ class _AddPostState extends State<AddPost> {
             elevation: 0.0,
             title: Container(
               padding: const EdgeInsets.all(8.0),
-              child: const Text('POST'),
+              child: Text('POST',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headline3!
+                      .copyWith(color: Colors.white)),
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(5),
@@ -215,6 +219,7 @@ class _AddPostState extends State<AddPost> {
                               setState(() {
                                 showSpinner = false;
                               });
+                              Navigator.of(context).pop();
                             }).onError((e, stackTrace) {
                               toastMessage(e.toString());
                               setState(() {
