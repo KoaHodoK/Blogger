@@ -16,7 +16,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final dbRef = FirebaseDatabase.instance.reference().child('Posts');
   FirebaseAuth auth = FirebaseAuth.instance;
-
+  TextEditingController searchController = TextEditingController();
+  String search = "";
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,45 +57,100 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          TextFormField(
+            onChanged: (val) {
+              search = val;
+            },
+            controller: searchController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+                hintText: 'Search with Blog Title',
+                prefixIcon: Icon(Icons.search)),
+          ),
           Expanded(
               child: FirebaseAnimatedList(
             query: dbRef.child('Post List'),
             itemBuilder: (context, snapshot, animation, index) {
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: FadeInImage.assetNetwork(
-                          width: MediaQuery.of(context).size.width,
-                          height: 250,
-                          placeholder: 'images/blog_logo.png',
-                          image: snapshot.value['pImage'],
-                          fit: BoxFit.cover,
+              String tempTitle = snapshot.value['pTitle'];
+              if (searchController.text.isEmpty) {
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32.0, vertical: 8.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(5),
+                          child: FadeInImage.assetNetwork(
+                            width: MediaQuery.of(context).size.width,
+                            height: 250,
+                            placeholder: 'images/blog_logo.png',
+                            image: snapshot.value['pImage'],
+                            fit: BoxFit.cover,
+                          ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                            snapshot.value['pTitle'].toString().toUpperCase(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                              snapshot.value['pTitle'].toString().toUpperCase(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyText1!
+                                  .copyWith(color: Colors.black)),
+                        ),
+                        Text(snapshot.value['pDescription'],
                             style: Theme.of(context)
                                 .textTheme
-                                .bodyText1!
-                                .copyWith(color: Colors.black)),
-                      ),
-                      Text(snapshot.value['pDescription'],
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyText2!
-                              .copyWith(color: Colors.black87))
-                    ],
+                                .bodyText2!
+                                .copyWith(color: Colors.black87))
+                      ],
+                    ),
                   ),
-                ),
-              );
+                );
+              } else if (tempTitle
+                  .toLowerCase()
+                  .contains(searchController.text.toString())) {
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32.0, vertical: 8.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(5),
+                          child: FadeInImage.assetNetwork(
+                            width: MediaQuery.of(context).size.width,
+                            height: 250,
+                            placeholder: 'images/blog_logo.png',
+                            image: snapshot.value['pImage'],
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                              snapshot.value['pTitle'].toString().toUpperCase(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyText1!
+                                  .copyWith(color: Colors.black)),
+                        ),
+                        Text(snapshot.value['pDescription'],
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyText2!
+                                .copyWith(color: Colors.black87))
+                      ],
+                    ),
+                  ),
+                );
+              } else {
+                return Container();
+              }
             },
           ))
         ],
